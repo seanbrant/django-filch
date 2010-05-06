@@ -26,16 +26,21 @@ def loads(s):
     return value
 
 
-def get_key_value(lookup, value):
-    bits = lookup.split('__')
-    attr = bits.pop(0)
+def get_key_value(key, value):
+    # key that might look like this:
+    # key = location__city__name
+    # value = 'Chicago'
+    # and returns this:
+    # ('location', {'city': 'Chicago'})
+    bits = key.split('__')
+    k = bits.pop(0)
     if not bits:
-        return (attr, value)
+        return (k, value)
     else:
-        d = {}
+        v = {}
         for i, bit in enumerate(bits):
             if i == len(bits) - 1:
-                d = {bit: value}
+                v = {bit: value}
             else:
-                d = {bit: {}}
-        return (attr, d)
+                v = {bit: {}}
+        return (k, v)
