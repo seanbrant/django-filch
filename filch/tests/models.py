@@ -15,4 +15,5 @@ class Group(models.Model):
 class Person(models.Model):
     name = models.CharField(max_length=50)
     groups = models.ManyToManyField(Group)
-    group_list = DenormManyToManyField('groups', attrs=('name',))
+    group_list = DenormManyToManyField('groups',
+        attrs=('name', 'location__name'))

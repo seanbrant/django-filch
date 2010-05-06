@@ -29,11 +29,11 @@ class DenormManyToManyFieldDescriptor(object):
 
 class DenormManyToManyField(models.TextField):
 
-    def __init__(self, from_field, attrs=None, *args, **kwargs):
+    def __init__(self, from_field, attrs, *args, **kwargs):
         self.from_field = from_field
         self.attrs = attrs
 
-        # If attrs was passed in a string and not a list
+        # If attrs was passed in as a string and not a list
         # lets convert it for use later.
         if isinstance(self.attrs, basestring):
             self.attrs = list(self.attrs)
@@ -41,6 +41,18 @@ class DenormManyToManyField(models.TextField):
         kwargs['default'] = []
         kwargs['editable'] = False
         super(DenormManyToManyField, self).__init__(*args, **kwargs)
+
+    def _resolve(self, instance, attr):
+        # _resolve supports lookups that span relations. So we
+        # split attr by '__' and iterate over that.
+        current = instance
+        for attr in  attr.split('__'):
+            current = getattr(current, attr, None)
+            if current is None:
+                return current
+        if callable(current):
+            return current()
+        return current
 
     def _prepare(self, instance):
         # The default prepare just iterates over self.attrs
@@ -50,7 +62,7 @@ class DenormManyToManyField(models.TextField):
         # as its only argument.
         if callable(self.attrs):
             return self.attrs(instance)
-        return dict([(attr, getattr(instance, attr, None)) for \
+        return dict([(attr, self._resolve(instance, attr)) for \
             attr in self.attrs])
 
     def _update(self, **kwargs):
@@ -65,7 +77,6 @@ class DenormManyToManyField(models.TextField):
         self.current_instance.__class__.objects \
             .filter(pk=self.current_instance.pk) \
             .update(**{self.name: self.current_instance.__dict__[self.name]})
-        print 'updating'
 
     def _connect(self, instance, **kwargs):
         # We need to access the from_field from the class
@@ -79,7 +90,7 @@ class DenormManyToManyField(models.TextField):
         # delete on the many-to-many to model.
         models.signals.post_save.connect(self._update, related.field.rel.to)
         models.signals.post_delete.connect(self._update, related.field.rel.to)
-        # We need a refrance to the current instance for use in
+        # We need a reference to the current instance for use in
         # the signal handlers.
         self.current_instance = instance
 
