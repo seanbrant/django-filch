@@ -1,0 +1,52 @@
+django-filch
+========
+
+``django-filch`` allows you to de-normalize data in Django models in a simple way. Add
+``filch`` to your ``INSTALLED_APPS`` then all you have to do is add a field to the model
+that you want to contain de-normalized data.
+
+Right now ``django-flich`` only contains a field that will store in the database a json
+serialized copy of many-to-many data. When the field is accessed it will automatically
+convert the data in the database to normal python.
+
+
+DenormManyToManyField(from_field, attrs)
+=====================
+from_field: ``string``. Name of the ``ManyToManyField`` on the same model that you want
+to de-normalize.
+
+attrs: ``list, tuple, string, or callable``. Attrs should be attributes of the model used in the
+many-to-many. If a string is provided it will be converted to a list for you. If you provide a
+callable it will be passed an ``instance`` of the model and should return a dict of attributes
+and values.
+
+
+
+from django.db import models
+
+from filch.fields import DenormManyToManyField
+
+class Group(models.Model):
+    name = models.CharField(max_length=50)
+
+
+class Person(models.Model):
+    name = models.CharField(max_length=50)
+    groups = models.ManyToManyField(Group)
+    group_list = DenormManyToManyField('groups', ('name',))
+
+
+person = Person.objects.create(name='sean')
+group = Group.obejcts.create(name='PyChi')
+
+person.groups.add(group)
+person.group_list
+[{'name': 'PyChi'}]
+
+group.name = 'Djangonauts'
+group.save()
+person.group_list
+[{'name': 'Djangonauts'}]
+
+person.groups.remove(group)
+[]
