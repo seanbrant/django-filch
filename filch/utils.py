@@ -32,15 +32,15 @@ def get_key_value(key, value):
     # value = 'Chicago'
     # and returns this:
     # ('location', {'city': 'Chicago'})
-    bits = key.split('__')
+    bits = key.split("__")
     k = bits.pop(0)
+    v = {}
     if not bits:
         return (k, value)
-    else:
-        v = {}
-        for i, bit in enumerate(bits):
-            if i == len(bits) - 1:
-                v = {bit: value}
-            else:
-                v = {bit: {}}
-        return (k, v)
+    while bits:
+        bit = bits.pop()
+        if not v:
+            v = {bit: value}
+        else:
+            v = {bit: v}
+    return (k, v)
