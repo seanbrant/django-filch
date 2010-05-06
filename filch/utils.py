@@ -34,8 +34,8 @@ def get_key_value(lookup, value):
     else:
         d = {}
         for i, bit in enumerate(bits):
-            if i == len(bits):
-                d = {bit: {}}
-            else:
+            if i == len(bits) - 1:
                 d = {bit: value}
+            else:
+                d = {bit: {}}
         return (attr, d)
