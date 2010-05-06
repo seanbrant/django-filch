@@ -28,7 +28,7 @@ def loads(s):
 
 def get_key_value(key, value):
     # key that might look like this:
-    # key = location__city__name
+    # key = 'location__city__name'
     # value = 'Chicago'
     # and returns this:
     # ('location', {'city': 'Chicago'})
