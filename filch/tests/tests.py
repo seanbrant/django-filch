@@ -27,20 +27,20 @@ class ManyToManyChangeTestCase(object):
         self.person.groups.add(self.group1)
         self.assertEquals(self.person.group_list,
             [
-                {'location__name': 'Chicago', 'name': 'PyChi'},
+                {'location': {'name': 'Chicago'}, 'name': 'PyChi'},
             ])
 
         self.person.groups.add(self.group2)
         self.assertEquals(self.person.group_list,
             [
-                {'location__name': 'Chicago', 'name': 'PyChi'},
-                {'location__name': 'Chicago', 'name': 'WhiteSoxsFan'},
+                {'location': {'name': 'Chicago'}, 'name': 'PyChi'},
+                {'location': {'name': 'Chicago'}, 'name': 'WhiteSoxsFan'},
             ])
 
         self.person.groups.remove(self.group1)
         self.assertEquals(self.person.group_list,
             [
-                {'location__name': 'Chicago', 'name': 'WhiteSoxsFan'},
+                {'location': {'name': 'Chicago'}, 'name': 'WhiteSoxsFan'},
             ])
 
         self.person.groups.clear()
@@ -53,14 +53,14 @@ class RelatedInstanceUpdateTestCase(BaseTestCase):
         self.person.groups.add(self.group1)
         self.assertEquals(self.person.group_list,
             [
-                {'location__name': 'Chicago', 'name': 'PyChi'},
+                {'location': {'name': 'Chicago'}, 'name': 'PyChi'},
             ])
 
-        self.group1.name = 'Chicago Djangonauts'
+        self.group1.name = 'Djangonauts'
         self.group1.save()
         self.assertEquals(self.person.group_list,
             [
-                {'location__name': 'Chicago', 'name': 'Chicago Djangonauts'},
+                {'location': {'name': 'Chicago'}, 'name': 'Djangonauts'},
             ])
 
         self.group1.delete()

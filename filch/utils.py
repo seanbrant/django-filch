@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 
@@ -23,3 +24,18 @@ def loads(s):
     value = simplejson.loads(s, parse_float=Decimal,
         encoding=settings.DEFAULT_CHARSET)
     return value
+
+
+def get_key_value(lookup, value):
+    bits = lookup.split('__')
+    attr = bits.pop(0)
+    if not bits:
+        return (attr, value)
+    else:
+        d = {}
+        for i, bit in enumerate(bits):
+            if i == len(bits):
+                d = {bit: {}}
+            else:
+                d = {bit: value}
+        return (attr, d)

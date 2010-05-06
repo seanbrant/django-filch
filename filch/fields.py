@@ -1,6 +1,6 @@
 from django.db import models
 
-from filch.utils import dumps, loads
+from filch.utils import dumps, loads, get_key_value
 
 
 class DenormManyToManyFieldDescriptor(object):
@@ -62,8 +62,9 @@ class DenormManyToManyField(models.TextField):
         # as its only argument.
         if callable(self.attrs):
             return self.attrs(instance)
-        return dict([(attr, self._resolve(instance, attr)) for \
-            attr in self.attrs])
+        return dict([
+            get_key_value(attr, self._resolve(instance, attr))
+        for attr in self.attrs])
 
     def _update(self, **kwargs):
         # If its been created it's not related. We can also ignore
