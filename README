@@ -49,4 +49,5 @@ person.group_list
 [{'name': 'Djangonauts'}]
 
 person.groups.remove(group)
+person.group_list
 []
