@@ -36,7 +36,7 @@ class HomepageItem(models.Model):
     objects = GenericResolutionManager()
 
     class Meta(object):
-        ordering = ('order',)
+        ordering = ('order', 'slot__name')
 
 
 class PublishedManager(models.Manager):
