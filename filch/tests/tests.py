@@ -146,5 +146,4 @@ class GenericResolutionManagerTestCase(TestCase):
             .filter(slot=self.slot1).get_content_objects(querysets={
                 Article: Article.published.all(),
             })
-        print items
         self.assertEquals(len(items), 4)

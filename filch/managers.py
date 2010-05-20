@@ -45,8 +45,7 @@ class GenericResolutionQueryset(models.query.QuerySet):
                     except KeyError:
                         pass
         for order in order_fields:
-            results.sort(lambda a, b: a.__temp_ordering[order] - \
-                b.__temp_ordering[order])
+            results = sorted(results, key=lambda i: i.__temp_ordering[order])
         for result in results:
             del result.__temp_ordering
         return results
