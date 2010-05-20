@@ -39,10 +39,11 @@ class GenericResolutionQueryset(models.query.QuerySet):
                 for order in ordering:
                     try:
                         fields = objects[model][pk].__dict__.copy()
-                        state = fields.pop('_state')
+                        private_fields = dict((k, fields.pop(k)) for k in \
+                            fields.keys() if k.startswith('_'))
                         obj = model(**fields)
                         obj.__temp_ordering = order
-                        obj._state = state
+                        obj.__dict__.update(private_fields)
                         results.append(obj)
                     except KeyError:
                         pass
