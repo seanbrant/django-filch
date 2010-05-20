@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
@@ -66,15 +67,22 @@ class DenormManyToManyFieldTestCase(TestCase):
 class GenericResolutionManagerTestCase(TestCase):
 
     def setUp(self):
+        self.author = User.objects.create(
+            username='Sean',
+            email='test@test.com',
+        )
         self.article1 = Article.objects.create(
             name='Django 1.2 released!',
+            author=self.author,
         )
         self.article2 = Article.objects.create(
             name='Filch is a real query saver',
+            author=self.author,
         )
         self.article3 = Article.objects.create(
             name='Unpublished!',
             is_published=False,
+            author=self.author,
         )
         self.press1 = Press.objects.create(
             name='Django taking the world by storm',

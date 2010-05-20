@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -49,6 +50,7 @@ class PublishedManager(models.Manager):
 class Article(models.Model):
     name = models.CharField(max_length=50)
     is_published = models.BooleanField(default=True)
+    author = models.ForeignKey(User)
 
     objects = models.Manager()
     published = PublishedManager()
