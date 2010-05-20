@@ -29,6 +29,8 @@ class GenericResolutionQueryset(models.query.QuerySet):
                 qs = querysets[model]
             else:
                 qs = model._default_manager
+            if select_related:
+                qs = qs.select_related()
             object_list = qs.filter(pk__in=objs.keys())
             for obj in object_list:
                 objects.setdefault(model, {})[obj.pk] = obj
