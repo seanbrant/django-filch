@@ -1,2 +1,1 @@
-from filch.tests.tests import ManyToManyChangeTestCase, \
-    RelatedInstanceUpdateTestCase
+from filch.tests.tests import *
