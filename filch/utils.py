@@ -32,7 +32,6 @@ class DotDict(dict):
     __delattr__ = dict.__delitem__
 
     def __getattr__(self, attr):
-        print attr
         return self.get(attr, None)
 
 
