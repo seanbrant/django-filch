@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models.loading import get_model
 
+from filch.utils import convert_lookup_to_dict
+
 
 class GenericResolutionQueryset(models.query.QuerySet):
 
@@ -8,22 +10,30 @@ class GenericResolutionQueryset(models.query.QuerySet):
         super(GenericResolutionQueryset, self).__init__(*args, **kwargs)
         self.ordering = self.model._meta.ordering
 
-    def get_content_objects(self, querysets={}, select_related=True):
+    def get_content_objects(self, querysets={}, annotate=[], select_related=True):
         models = {}
         objects = {}
         results = []
-        order_fields = self.model._meta.ordering
+        order_fields = list(self.model._meta.ordering)
+        annotate_fields = list(annotate)
+        extras = []
+        extras.extend(order_fields)
+        extras.extend(annotate_fields)
         values = self.values('pk', 'object_id', 'content_type__app_label',
-            'content_type__model', *order_fields)
+            'content_type__model', *extras)
         for item in values:
             pk = item.pop('pk')
             object_id = item.pop('object_id')
             app_label = item.pop('content_type__app_label')
             model_name = item.pop('content_type__model')
-            ordering = item
+            annotated = dict((k, v) for k, v in item.items() if k in annotate_fields)
+            ordering = dict((k, v) for k, v in item.items() if k in order_fields)
             model = get_model(app_label, model_name)
             models.setdefault(model, {}) \
-                .setdefault(object_id, []).append(ordering)
+                .setdefault(object_id, []).append({
+                    'ordering': ordering,
+                    'annotated': annotated,
+                })
         for model, objs in models.items():
             if model in querysets:
                 qs = querysets[model]
@@ -35,14 +45,17 @@ class GenericResolutionQueryset(models.query.QuerySet):
             for obj in object_list:
                 objects.setdefault(model, {})[obj.pk] = obj
         for model, objs in models.items():
-            for pk, ordering in objs.items():
-                for order in ordering:
+            for pk, options_list in objs.items():
+                for options in options_list:
                     try:
                         fields = objects[model][pk].__dict__.copy()
                         private_fields = dict((k, fields.pop(k)) for k in \
                             fields.keys() if k.startswith('_'))
                         obj = model(**fields)
-                        obj.__temp_ordering = order
+                        obj.__temp_ordering = options['ordering']
+                        for name, annotate in options['annotated'].items():
+                            k, v = convert_lookup_to_dict(name, annotate)
+                            setattr(obj, k, v)
                         obj.__dict__.update(private_fields)
                         results.append(obj)
                     except KeyError:

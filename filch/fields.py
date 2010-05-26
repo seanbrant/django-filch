@@ -1,6 +1,6 @@
 from django.db import models
 
-from filch.utils import dumps, loads, get_key_value
+from filch.utils import dumps, loads, convert_lookup_to_dict
 
 
 class DenormManyToManyFieldDescriptor(object):
@@ -63,7 +63,7 @@ class DenormManyToManyField(models.TextField):
         if callable(self.attrs):
             return self.attrs(instance)
         return dict([
-            get_key_value(attr, self._resolve(instance, attr))
+            convert_lookup_to_dict(attr, self._resolve(instance, attr))
         for attr in self.attrs])
 
     def _update(self, **kwargs):

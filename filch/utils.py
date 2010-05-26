@@ -26,7 +26,17 @@ def loads(s):
     return value
 
 
-def get_key_value(key, value):
+class DotDict(dict):
+
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+    def __getattr__(self, attr):
+        print attr
+        return self.get(attr, None)
+
+
+def convert_lookup_to_dict(key, value):
     # key that might look like this:
     # key = 'location__city__name'
     # value = 'Chicago'
@@ -43,4 +53,4 @@ def get_key_value(key, value):
             v = {bit: value}
         else:
             v = {bit: v}
-    return (k, v)
+    return (k, DotDict(v))

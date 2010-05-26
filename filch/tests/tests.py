@@ -155,3 +155,9 @@ class GenericResolutionManagerTestCase(TestCase):
                 Article: Article.published.all(),
             })
         self.assertEquals(len(items), 4)
+
+    def test_get_content_objects_with_annotate(self):
+        items = HomepageItem.objects \
+            .filter(slot=self.slot1).get_content_objects(annotate=('slot__name',))
+        for item in items:
+            self.assertTrue(hasattr(item, 'slot'))
