@@ -4,6 +4,9 @@ from filch.utils import dumps, loads, convert_lookup_to_dict
 
 
 class DenormManyToManyFieldDescriptor(object):
+    """Field descriptor for denormalizing bits of data from a 
+    many-to-many relationship.
+    """
 
     def __init__(self, field):
         self.field = field
@@ -62,42 +65,62 @@ class DenormManyToManyField(models.TextField):
         # as its only argument.
         if callable(self.attrs):
             return self.attrs(instance)
-        return dict([
-            convert_lookup_to_dict(attr, self._resolve(instance, attr))
-        for attr in self.attrs])
+
+        return dict([convert_lookup_to_dict(attr, self._resolve(instance, attr))
+                     for attr 
+                     in self.attrs])
 
     def _update(self, **kwargs):
         # If its been created it's not related. We can also ignore
         # any pre change actions.
         action = kwargs.get('action', None)
+
         if kwargs.get('created') or action and 'pre_' in action:
             return
+
         objects = getattr(self.current_instance, self.from_field).all()
         items = [[o.pk, self._prepare(o)] for o in objects]
+
         self.current_instance.__dict__[self.name] = dumps(items)
         self.current_instance.__class__.objects \
             .filter(pk=self.current_instance.pk) \
             .update(**{self.name: self.current_instance.__dict__[self.name]})
 
     def _connect(self, instance, **kwargs):
+
         # We need to access the from_field from the class
         # otherwise we get the many-to-many descriptor
         # which throws a primary key error.
         related = getattr(instance.__class__, self.from_field)
+
         # Connect the signal that listens for changes on the
         # many-to-many through model.
         models.signals.m2m_changed.connect(self._update, related.through)
+
         # Connect the signal that listens for post save and post
         # delete on the many-to-many to model.
         models.signals.post_save.connect(self._update, related.field.rel.to)
         models.signals.post_delete.connect(self._update, related.field.rel.to)
+
         # We need a reference to the current instance for use in
         # the signal handlers.
         self.current_instance = instance
 
     def contribute_to_class(self, cls, name):
         super(DenormManyToManyField, self).contribute_to_class(cls, name)
+
         setattr(cls, name, DenormManyToManyFieldDescriptor(self))
+
         # We need access to the from_field but it is not guaranteed
         # until after the model has been initialized.
         models.signals.post_init.connect(self._connect, cls)
+
+    def south_field_triple(self):
+        "Returns a suitable description of this field for South."
+        from south.modelsinspector import introspector
+
+        field_class = "django.db.models.fields.TextField"
+        args, kwargs = introspector(self)
+        return (field_class, args, kwargs)
+
+
