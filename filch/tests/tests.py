@@ -63,6 +63,13 @@ class DenormManyToManyFieldTestCase(TestCase):
         self.group1.delete()
         self.assertEquals(self.person.group_list, [])
 
+    def test_main_model_save(self):
+        self.person.groups.add(self.group1)
+        person = Person.objects.get(name='Sean')
+        person.save()
+        person = Person.objects.get(name='Sean')
+        self.assertEquals(person.group_list, ['location'])
+
 
 class GenericResolutionManagerTestCase(TestCase):
 

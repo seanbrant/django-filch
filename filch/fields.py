@@ -42,6 +42,11 @@ class DenormManyToManyField(models.TextField):
         kwargs['editable'] = False
         super(DenormManyToManyField, self).__init__(*args, **kwargs)
 
+    def get_prep_value(self, value):
+        if not isinstance(value, basestring):
+            value = dumps(value)
+        return super(DenormManyToManyField, self).get_prep_value(value)
+
     def _resolve(self, instance, attr):
         # _resolve supports lookups that span relations. So we
         # split attr by '__' and iterate over that.
