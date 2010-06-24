@@ -64,19 +64,20 @@ class DenormManyToManyFieldTestCase(TestCase):
         self.assertEquals(self.person.group_list, [])
 
     def test_main_model_update_error(self):
-        # fake create step
         person = Person.objects.create(name='Sean')
         person.save()
         person.groups.add(self.group1)
         person.groups.add(self.group2)
-        print person.group_list
-        # fake update step
+        person.save()
+        self.assertEquals(person.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}, {'name': 'WhiteSoxsFan', 'location': {'name': 'Chicago'}}])
         person = Person.objects.get(id=person.id)
+        person.name = 'Matt'
         person.save()
         person.groups.clear()
         person.groups.add(self.group1)
         person.groups.add(self.group2)
-        print person.group_list # this should fail
+        person.save()
+        self.assertEquals(person.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}, {'name': 'WhiteSoxsFan', 'location': {'name': 'Chicago'}}])
 
 
 class GenericResolutionManagerTestCase(TestCase):

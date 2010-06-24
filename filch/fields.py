@@ -24,7 +24,7 @@ class DenormManyToManyFieldDescriptor(object):
                     "or json formated array. You passed in %s" % items)
         # We iterate over the items and only return the values
         # not the keys.
-        return [v for k, v in instance.__dict__[self.field.name]]
+        return instance.__dict__[self.field.name]
 
     def __set__(self, instance, value):
         instance.__dict__[self.field.name] = value
@@ -84,7 +84,7 @@ class DenormManyToManyField(models.TextField):
             return
 
         objects = getattr(self.current_instance, self.from_field).all()
-        items = [[o.pk, self._prepare(o)] for o in objects]
+        items = [self._prepare(o) for o in objects]
 
         self.current_instance.__dict__[self.name] = dumps(items)
         self.current_instance.__class__.objects \
@@ -92,7 +92,6 @@ class DenormManyToManyField(models.TextField):
             .update(**{self.name: self.current_instance.__dict__[self.name]})
 
     def _connect(self, instance, **kwargs):
-
         # We need to access the from_field from the class
         # otherwise we get the many-to-many descriptor
         # which throws a primary key error.
@@ -127,5 +126,3 @@ class DenormManyToManyField(models.TextField):
         field_class = "django.db.models.fields.TextField"
         args, kwargs = introspector(self)
         return (field_class, args, kwargs)
-
-
