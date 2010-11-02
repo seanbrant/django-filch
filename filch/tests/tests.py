@@ -55,12 +55,14 @@ class DenormManyToManyFieldTestCase(TestCase):
 
         self.group1.name = 'Djangonauts'
         self.group1.save()
+        self.person = Person.objects.get(pk=self.person.pk)
         self.assertEquals(self.person.group_list,
             [
                 {'location': {'name': 'Chicago'}, 'name': 'Djangonauts'},
             ])
 
         self.group1.delete()
+        self.person = Person.objects.get(pk=self.person.pk)
         self.assertEquals(self.person.group_list, [])
 
     def test_main_model_update_error(self):
@@ -78,6 +80,14 @@ class DenormManyToManyFieldTestCase(TestCase):
         person.groups.add(self.group2)
         person.save()
         self.assertEquals(person.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}, {'name': 'WhiteSoxsFan', 'location': {'name': 'Chicago'}}])
+
+    def test_multiple_instances(self):
+        person1 = Person.objects.create(name="Maria")
+        person2 = Person.objects.create(name="Juan")
+
+        person1.groups.add(self.group1)
+
+        self.assertEquals(person1.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}])
 
 
 class GenericResolutionManagerTestCase(TestCase):

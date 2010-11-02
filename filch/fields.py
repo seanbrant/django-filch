@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.related import RelatedObject
+from django.utils.functional import curry
 
 from filch.utils import dumps, loads, convert_lookup_to_dict
 
@@ -79,17 +81,33 @@ class DenormManyToManyField(models.TextField):
         # If its been created it's not related. We can also ignore
         # any pre change actions.
         action = kwargs.get('action', None)
+        related_name = kwargs.get('related_name', None)
+        deleting = kwargs.get('deleting', False)
 
         if kwargs.get('created') or action and 'pre_' in action:
             return
 
-        objects = getattr(self.current_instance, self.from_field).all()
-        items = [self._prepare(o) for o in objects]
+        if action:
+            self._update_instance(kwargs["instance"])
+        elif related_name:
+            if deleting:
+                remove = [kwargs["instance"]]
+            else:
+                remove = []
+            for instance in getattr(kwargs["instance"], related_name).all():
+                self._update_instance(instance, remove)
 
-        self.current_instance.__dict__[self.name] = dumps(items)
-        self.current_instance.__class__.objects \
-            .filter(pk=self.current_instance.pk) \
-            .update(**{self.name: self.current_instance.__dict__[self.name]})
+    def _update_instance(self, instance, remove=None):
+        if remove is None:
+            remove = []
+        objects = getattr(instance, self.from_field).all()
+        items = [self._prepare(o) for o in objects
+                 if o not in remove]
+
+        instance.__dict__[self.name] = dumps(items)
+        instance.__class__.objects \
+            .filter(pk=instance.pk) \
+            .update(**{self.name: instance.__dict__[self.name]})
 
     def _connect(self, instance, **kwargs):
         # We need to access the from_field from the class
@@ -103,12 +121,16 @@ class DenormManyToManyField(models.TextField):
 
         # Connect the signal that listens for post save and post
         # delete on the many-to-many to model.
-        models.signals.post_save.connect(self._update, related.field.rel.to)
-        models.signals.post_delete.connect(self._update, related.field.rel.to)
-
-        # We need a reference to the current instance for use in
-        # the signal handlers.
-        self.current_instance = instance
+        related_name = RelatedObject(None, instance.__class__, related.field).get_accessor_name()
+        models.signals.post_save.connect(curry(self._update,
+                                               related_name=related_name),
+                                         related.field.rel.to,
+                                         weak=False)
+        models.signals.pre_delete.connect(curry(self._update,
+                                                related_name=related_name,
+                                                deleting=True),
+                                          related.field.rel.to,
+                                          weak=False)
 
     def contribute_to_class(self, cls, name):
         super(DenormManyToManyField, self).contribute_to_class(cls, name)
