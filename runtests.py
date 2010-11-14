@@ -25,7 +25,7 @@ def runtests(*test_args):
         test_args = ['tests']
     parent = dirname(abspath(__file__))
     sys.path.insert(0, parent)
-    runner = DjangoTestSuiteRunner(verbosity=1, interactive=True)
+    runner = DjangoTestSuiteRunner(verbosity=1, interactive=True, failfast=False)
     failures = runner.run_tests(test_args)
     sys.exit(failures)
 
