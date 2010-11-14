@@ -1,5 +1,7 @@
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.db import connection
 from django.test import TestCase
 
 
@@ -87,8 +89,47 @@ class DenormManyToManyFieldTestCase(TestCase):
 
         person1.groups.add(self.group1)
 
-        self.assertEquals(person1.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}])
+        self.assertEqual(person1.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}])
 
+    def test_disconnect_signals(self):
+        field = Person._meta.get_field("group_list")
+        field.disconnect_signals()
+
+        person = Person.objects.create(name="Maria")
+
+        person.groups.add(self.group1)
+
+        self.assertEqual(person.group_list, [])
+
+        field.connect_signals()
+
+    def test_update_queryset(self):
+        _old_debug = settings.DEBUG
+        settings.DEBUG = True
+
+        field = Person._meta.get_field("group_list")
+        field.disconnect_signals()
+
+        person1 = Person.objects.create(name="Maria")
+        person2 = Person.objects.create(name="Juan")
+
+        person1.groups.add(self.group1)
+        person2.groups.add(self.group2)
+
+        self.assertEqual(person1.group_list, [])
+        self.assertEqual(person2.group_list, [])
+
+        connection.queries = []
+        field.update_queryset(Person.objects.all())
+        self.assertEqual(len(connection.queries), 5)
+
+        person1 = Person.objects.get(pk=person1.pk)
+        person2 = Person.objects.get(pk=person2.pk)
+        self.assertEqual(person1.group_list, [{'name': 'PyChi', 'location': {'name': 'Chicago'}}])
+        self.assertEqual(person2.group_list, [{'name': 'WhiteSoxsFan', 'location': {'name': 'Chicago'}}])
+
+        field.connect_signals()
+        settings.DEBUG = _old_debug
 
 class GenericResolutionManagerTestCase(TestCase):
 

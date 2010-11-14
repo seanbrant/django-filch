@@ -77,69 +77,92 @@ class DenormManyToManyField(models.TextField):
                      for attr 
                      in self.attrs])
 
+    def _delete(self, instance, **kwargs):
+        for model_instance in getattr(instance, self.related_name).all():
+            self.update_instance(model_instance, [instance])
+
     def _update(self, **kwargs):
         # If its been created it's not related. We can also ignore
         # any pre change actions.
         action = kwargs.get('action', None)
-        related_name = kwargs.get('related_name', None)
-        deleting = kwargs.get('deleting', False)
 
         if kwargs.get('created') or action and 'pre_' in action:
             return
 
         if action:
-            self._update_instance(kwargs["instance"])
-        elif related_name:
-            if deleting:
-                remove = [kwargs["instance"]]
-            else:
-                remove = []
-            for instance in getattr(kwargs["instance"], related_name).all():
-                self._update_instance(instance, remove)
+            self.update_instance(kwargs["instance"])
+        else:
+            for instance in getattr(kwargs["instance"], self.related_name).all():
+                self.update_instance(instance)
 
-    def _update_instance(self, instance, remove=None):
+    def update_instance(self, instance, remove=None, objects=None):
         if remove is None:
             remove = []
-        objects = getattr(instance, self.from_field).all()
+        if objects is None:
+            objects = getattr(instance, self.from_field).all()
+
         items = [self._prepare(o) for o in objects
                  if o not in remove]
 
         instance.__dict__[self.name] = dumps(items)
-        instance.__class__.objects \
-            .filter(pk=instance.pk) \
-            .update(**{self.name: instance.__dict__[self.name]})
+        instance.__class__.objects.filter(pk=instance.pk).update(
+            **{self.name: instance.__dict__[self.name]})
 
-    def _connect(self, instance, **kwargs):
-        # We need to access the from_field from the class
-        # otherwise we get the many-to-many descriptor
-        # which throws a primary key error.
-        related = getattr(instance.__class__, self.from_field)
+    def update_queryset(self, queryset):
+        # The name of the FK from the m2m through model to self.model
+        m2m_field_name = self.related.field.m2m_field_name()
 
+        # The name of the FK from the m2m through model to the target model
+        m2m_reverse_field_name = self.related.field.m2m_reverse_field_name()
+
+        m2m_objects = self.related.through._base_manager.filter(
+            **{"%s__in" % m2m_field_name: queryset}).select_related()
+
+        m2m_objects_by_instance_id = {}
+        for m2m_obj in m2m_objects:
+            instance_pk = getattr(m2m_obj, "%s_id" % m2m_field_name)
+            m2m_objects_by_instance_id.setdefault(instance_pk, []).append(m2m_obj)
+
+        for instance in queryset:
+            m2m_objs = m2m_objects_by_instance_id.get(instance.pk, [])
+            self.update_instance(instance,
+                                 objects=[getattr(o, m2m_reverse_field_name)
+                                          for o in m2m_objs])
+
+
+    def _connect_signals_receiver(self, sender, **kwargs):
+        assert self.model is sender
+
+        self.related = getattr(self.model, self.from_field)
+        self.related_name = RelatedObject(None, self.model, self.related.field).get_accessor_name()
+
+        self.connect_signals()
+
+    def connect_signals(self):
         # Connect the signal that listens for changes on the
         # many-to-many through model.
-        models.signals.m2m_changed.connect(self._update, related.through)
+        models.signals.m2m_changed.connect(self._update,
+                                           self.related.through)
 
         # Connect the signal that listens for post save and post
         # delete on the many-to-many to model.
-        related_name = RelatedObject(None, instance.__class__, related.field).get_accessor_name()
-        models.signals.post_save.connect(curry(self._update,
-                                               related_name=related_name),
-                                         related.field.rel.to,
-                                         weak=False)
-        models.signals.pre_delete.connect(curry(self._update,
-                                                related_name=related_name,
-                                                deleting=True),
-                                          related.field.rel.to,
-                                          weak=False)
+        models.signals.post_save.connect(self._update,
+                                         self.related.field.rel.to)
+        models.signals.pre_delete.connect(self._delete,
+                                          self.related.field.rel.to)
+
+    def disconnect_signals(self):
+        models.signals.m2m_changed.disconnect(self._update, self.related.through)
+        models.signals.post_save.disconnect(self._update, self.related.field.rel.to)
+        models.signals.pre_delete.connect(self._delete, self.related.field.rel.to)
 
     def contribute_to_class(self, cls, name):
         super(DenormManyToManyField, self).contribute_to_class(cls, name)
 
         setattr(cls, name, DenormManyToManyFieldDescriptor(self))
 
-        # We need access to the from_field but it is not guaranteed
-        # until after the model has been initialized.
-        models.signals.post_init.connect(self._connect, cls)
+        models.signals.class_prepared.connect(self._connect_signals_receiver, self.model)
+
 
     def south_field_triple(self):
         "Returns a suitable description of this field for South."
